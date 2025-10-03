@@ -19,13 +19,11 @@ def get_names():
     """
     names = []
     print(f"--- Welcome to the Wheel of Names! ---")
-    print(f"Using names.txt file to choose a winner.")
     
     try:
         with open("names.txt", "r") as file:
             names = [line.strip() for line in file if line.strip()]
-    except FileNotFoundError:
-        print("Error reading names.txt file. Please ensure the file exists.")
+    except:
         return []
         
     return names
@@ -91,10 +89,13 @@ def display_winner(name):
 def main():
     """Main function to run the program."""
     names_list = get_names()
+
+    if not names_list or len(names_list) < 2:
+        print("Please provide at least two names in names.txt to choose from.")
+        return
     
-    if names_list:
-        winner = run_animation(names_list)
-        display_winner(winner)
+    winner = run_animation(names_list)
+    display_winner(winner)
 
 if __name__ == "__main__":
     main()
