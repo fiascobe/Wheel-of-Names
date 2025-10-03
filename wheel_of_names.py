@@ -77,7 +77,7 @@ def display_winner(name):
     time.sleep(1.5) # Dramatic pause
 
     winner_text = f"🎉 {name.upper()} 🎉"
-    border = "*" * (len(winner_text) + 4)
+    border = "*" * (len(winner_text) + 6)
     
     print("\n\n")
     print(f"\t\t{border}")
