@@ -4,7 +4,6 @@ import os
 import platform
 
 # --- Configuration ---
-MAX_NAMES = 20
 ANIMATION_DURATION_SECONDS = 5 # How long the "spin" should last
 # ---------------------
 
@@ -20,23 +19,12 @@ def get_names():
     """
     names = []
     print(f"--- Welcome to the Wheel of Names! ---")
-    print(f"Enter up to {MAX_NAMES} names. Press Enter on an empty line when you're done.")
     
-    while len(names) < MAX_NAMES:
-        prompt = f"Enter name #{len(names) + 1}: "
-        name = input(prompt).strip()
-        
-        if not name:
-            if len(names) < 2:
-                print("\nPlease enter at least two names to spin the wheel.")
-                continue
-            else:
-                break # Exit loop if input is empty and we have enough names
-        
-        names.append(name)
-        
-    if len(names) == MAX_NAMES:
-        print(f"\nYou have reached the maximum of {MAX_NAMES} names.")
+    try:
+        with open("names.txt", "r") as file:
+            names = [line.strip() for line in file if line.strip()]
+    except:
+        return []
         
     return names
 
@@ -66,9 +54,9 @@ def run_animation(names):
         display_name = random.choice(names)
         
         print("Choosing a name...\n")
-        print(f"\t\t+--------------------+")
+        print(f"\t\t+----------------------+")
         print(f"\t\t|   {display_name:<18} |")
-        print(f"\t\t+--------------------+")
+        print(f"\t\t+----------------------+")
 
         time.sleep(spin_delay)
 
@@ -89,7 +77,7 @@ def display_winner(name):
     time.sleep(1.5) # Dramatic pause
 
     winner_text = f"🎉 {name.upper()} 🎉"
-    border = "*" * (len(winner_text) + 4)
+    border = "*" * (len(winner_text) + 6)
     
     print("\n\n")
     print(f"\t\t{border}")
@@ -101,10 +89,13 @@ def display_winner(name):
 def main():
     """Main function to run the program."""
     names_list = get_names()
+
+    if not names_list or len(names_list) < 2:
+        print("Please provide at least two names in names.txt to choose from.")
+        return
     
-    if names_list:
-        winner = run_animation(names_list)
-        display_winner(winner)
+    winner = run_animation(names_list)
+    display_winner(winner)
 
 if __name__ == "__main__":
     main()
