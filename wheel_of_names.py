@@ -66,9 +66,9 @@ def run_animation(names):
         display_name = random.choice(names)
         
         print("Choosing a name...\n")
-        print(f"\t\t+--------------------+")
+        print(f"\t\t+----------------------+")
         print(f"\t\t|   {display_name:<18} |")
-        print(f"\t\t+--------------------+")
+        print(f"\t\t+----------------------+")
 
         time.sleep(spin_delay)
 
@@ -89,7 +89,7 @@ def display_winner(name):
     time.sleep(1.5) # Dramatic pause
 
     winner_text = f"🎉 {name.upper()} 🎉"
-    border = "*" * (len(winner_text) + 4)
+    border = "*" * (len(winner_text) + 6)
     
     print("\n\n")
     print(f"\t\t{border}")
