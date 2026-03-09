@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wheel of Names</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; }
+    input::placeholder { color: #C0B8E8; }
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.7); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useCallback } = React;
+
+    const POAP_SLICE_COLORS = [
+      "#B8A9F5","#D4A8E8","#F5A8C8","#A8C8F5","#F5D4A8",
+      "#A8F5D4","#F5A8A8","#C8F5A8","#A8D4F5","#E8A8F5",
+      "#F5C8A8","#A8F5C8","#D4F5A8","#A8B8F5","#F5A8D4",
+      "#C8A8F5","#F5F5A8","#A8E8F5","#F5B8A8","#B8F5A8"
+    ];
+
+    const SPIN_FREQS = [523, 587, 659, 784, 880];
+
+    function useAudio() {
+      const ctxRef = useRef(null);
+      const getCtx = () => {
+        if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        return ctxRef.current;
+      };
+      const playTick = useCallback(() => {
+        try {
+          const ctx = getCtx();
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.frequency.value = SPIN_FREQS[Math.floor(Math.random() * SPIN_FREQS.length)];
+          o.type = "sine";
+          g.gain.setValueAtTime(0.12, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+          o.start(); o.stop(ctx.currentTime + 0.1);
+        } catch(e) {}
+      }, []);
+      const playWin = useCallback(() => {
+        try {
+          const ctx = getCtx();
+          [523, 659, 784, 1047].forEach((freq, i) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.frequency.value = freq;
+            o.type = "triangle";
+            const t = ctx.currentTime + i * 0.13;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(0.15, t + 0.05);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+            o.start(t); o.stop(t + 0.5);
+          });
+        } catch(e) {}
+      }, []);
+      return { playTick, playWin };
+    }
+
+    function WheelCanvas({ names, colors, rotation, dark }) {
+      const canvasRef = useRef(null);
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || names.length === 0) return;
+        const ctx = canvas.getContext("2d");
+        const W = canvas.width, H = canvas.height;
+        const cx = W / 2, cy = H / 2;
+        const r = Math.min(W, H) / 2 - 8;
+        const slice = (2 * Math.PI) / names.length;
+        ctx.clearRect(0, 0, W, H);
+
+        names.forEach((name, i) => {
+          const start = rotation + i * slice;
+          const end = start + slice;
+          const mid = start + slice / 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, r, start, end);
+          ctx.closePath();
+          ctx.fillStyle = colors[i % colors.length];
+          ctx.fill();
+          ctx.strokeStyle = dark ? "rgba(13,13,20,0.4)" : "rgba(255,255,255,0.7)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(mid);
+          ctx.textAlign = "right";
+          ctx.fillStyle = dark ? "#fff" : "#4A3F8F";
+          const fontSize = Math.max(9, Math.min(13, 185 / names.length));
+          ctx.font = `700 ${fontSize}px 'Trebuchet MS', sans-serif`;
+          ctx.shadowColor = dark ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)";
+          ctx.shadowBlur = 3;
+          const label = name.length > 13 ? name.slice(0, 12) + "…" : name;
+          ctx.fillText(label, r - 10, fontSize / 3);
+          ctx.restore();
+        });
+
+        const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 22);
+        cg.addColorStop(0, "#9B8EE0");
+        cg.addColorStop(1, "#7B6ED0");
+        ctx.beginPath();
+        ctx.arc(cx, cy, 22, 0, 2 * Math.PI);
+        ctx.fillStyle = cg;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, 7, 0, 2 * Math.PI);
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        ctx.fill();
+      }, [names, colors, rotation, dark]);
+
+      return <canvas ref={canvasRef} width={360} height={360} style={{display:"block",margin:"0 auto"}} />;
+    }
+
+    const Sparkle = ({ style }) => (
+      <span style={{ fontSize: 14, color: "#9B8EE0", ...style }}>✦</span>
+    );
+
+    function App() {
+      const [names, setNames] = useState(["Alice", "Bob", "Charlie", "Diana", "Eve"]);
+      const [newName, setNewName] = useState("");
+      const [spinning, setSpinning] = useState(false);
+      const [rotation, setRotation] = useState(0);
+      const [winner, setWinner] = useState(null);
+      const [showWinner, setShowWinner] = useState(false);
+      const [history, setHistory] = useState([]);
+      const [tab, setTab] = useState("wheel");
+      const [dark, setDark] = useState(false);
+      const rotRef = useRef(0);
+      const animRef = useRef(null);
+      const { playTick, playWin } = useAudio();
+
+      const spin = useCallback(() => {
+        if (spinning || names.length < 2) return;
+        setWinner(null);
+        setShowWinner(false);
+        setSpinning(true);
+        const totalRot = (Math.random() * 6 + 8) * 2 * Math.PI;
+        const duration = 4500 + Math.random() * 800;
+        const startRot = rotRef.current;
+        const startTime = performance.now();
+        let lastTick = 0;
+        const ease = t => 1 - Math.pow(1 - t, 3);
+        const animate = (now) => {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const currentRot = startRot + totalRot * ease(progress);
+          rotRef.current = currentRot;
+          setRotation(currentRot);
+          const speed = 1 - progress;
+          const tickInterval = 55 + (1 - speed) * 420;
+          if (now - lastTick > tickInterval) { playTick(); lastTick = now; }
+          if (progress < 1) {
+            animRef.current = requestAnimationFrame(animate);
+          } else {
+            setSpinning(false);
+            const slice = (2 * Math.PI) / names.length;
+            const norm = ((currentRot % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+            const idx = Math.floor(((2 * Math.PI - norm) % (2 * Math.PI)) / slice) % names.length;
+            const w = names[idx];
+            setWinner(w);
+            setShowWinner(true);
+            playWin();
+            setHistory(h => [{
+              winner: w,
+              participants: [...names],
+              date: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) + " · " +
+                    new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })
+            }, ...h.slice(0, 49)]);
+          }
+        };
+        animRef.current = requestAnimationFrame(animate);
+      }, [spinning, names, playTick, playWin]);
+
+      const addName = () => {
+        const t = newName.trim();
+        if (!t || names.includes(t) || names.length >= 20) return;
+        setNames(n => [...n, t]);
+        setNewName("");
+      };
+      const removeName = name => setNames(n => n.filter(x => x !== name));
+
+      const T = dark ? {
+        bg: "#0D0D14", surface: "#16161F", border: "rgba(101,52,255,0.25)",
+        text: "#E8E8F0", textMuted: "#555", textLight: "#888",
+        inputBg: "#16161F",
+        tagText: c => c, tagBg: c => c + "22", tagBorder: c => c + "55",
+        btnPrimary: "linear-gradient(135deg, #6534FF 0%, #C850C0 50%, #FF4F9A 100%)",
+        btnPrimaryText: "#fff", btnPrimaryGlow: "0 4px 20px rgba(101,52,255,0.4)",
+        btnSecondary: "#1a1a28", btnSecondaryText: "#888",
+        tabActive: "linear-gradient(135deg, #6534FF, #C850C0)", tabInactiveText: "#444",
+        winnerGradient: "linear-gradient(135deg, #6534FF, #C850C0, #FF4F9A)",
+        pointerColor: "#FF4F9A",
+        headerBg: "rgba(13,13,20,0.95)", headerBorder: "rgba(101,52,255,0.2)",
+        historyCardBg: "#16161F", historyCardBorder: "rgba(101,52,255,0.2)",
+        logoGradient: "linear-gradient(135deg, #6534FF, #C850C0, #FF4F9A)",
+        sliceColors: POAP_SLICE_COLORS,
+      } : {
+        bg: "#F7F6FF", surface: "#FFFFFF", border: "rgba(155,142,224,0.3)",
+        text: "#2D2260", textMuted: "#9B8EE0", textLight: "#BDB5E8",
+        inputBg: "#FFFFFF",
+        tagText: () => "#4A3F8F", tagBg: c => c + "55", tagBorder: c => c + "88",
+        btnPrimary: "linear-gradient(135deg, #7B6ED0 0%, #C47FD5 50%, #E87FB0 100%)",
+        btnPrimaryText: "#fff", btnPrimaryGlow: "0 4px 20px rgba(123,110,208,0.35)",
+        btnSecondary: "#EDE9FF", btnSecondaryText: "#7B6ED0",
+        tabActive: "linear-gradient(135deg, #7B6ED0, #C47FD5)", tabInactiveText: "#C0B8E8",
+        winnerGradient: "linear-gradient(135deg, #7B6ED0, #C47FD5, #E87FB0)",
+        pointerColor: "#E87FB0",
+        headerBg: "rgba(247,246,255,0.95)", headerBorder: "rgba(155,142,224,0.2)",
+        historyCardBg: "#FFFFFF", historyCardBorder: "rgba(155,142,224,0.25)",
+        logoGradient: "linear-gradient(135deg, #7B6ED0, #C47FD5, #E87FB0)",
+        sliceColors: POAP_SLICE_COLORS,
+      };
+
+      return (
+        <div style={{ minHeight:"100vh", background:T.bg, color:T.text, fontFamily:"'Trebuchet MS','Segoe UI',sans-serif", transition:"background 0.3s,color 0.3s" }}>
+
+          {/* Header */}
+          <div style={{ padding:"0 24px", height:60, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${T.headerBorder}`, background:T.headerBg, backdropFilter:"blur(10px)", position:"sticky", top:0, zIndex:100 }}>
+            <div style={{ fontSize:17, fontWeight:900, letterSpacing:"0.06em", background:T.logoGradient, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+              🎡 WHEEL OF NAMES
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              {[["wheel","✦ Spin"],["history","History"]].map(([v, label]) => (
+                <button key={v} onClick={() => setTab(v)} style={{ padding:"6px 16px", borderRadius:20, border:"none", cursor:"pointer", fontSize:11, fontWeight:700, letterSpacing:"0.08em", fontFamily:"inherit", background:tab===v ? T.tabActive : "transparent", color:tab===v ? "#fff" : T.tabInactiveText, transition:"all 0.2s" }}>{label}</button>
+              ))}
+              <button onClick={() => setDark(d => !d)} style={{ padding:"6px 14px", borderRadius:20, border:`1px solid ${T.border}`, background:T.surface, color:T.textMuted, cursor:"pointer", fontFamily:"inherit", fontSize:13, transition:"all 0.2s" }}>
+                {dark ? "☀️" : "🌙"}
+              </button>
+            </div>
+          </div>
+
+          {/* Light mode blobs */}
+          {!dark && (
+            <div style={{ position:"fixed", inset:0, overflow:"hidden", pointerEvents:"none", zIndex:0 }}>
+              <div style={{ position:"absolute", top:-60, right:-60, width:220, height:220, borderRadius:"50%", background:"#D4C8F8", opacity:0.5 }} />
+              <div style={{ position:"absolute", top:100, left:-80, width:280, height:280, borderRadius:"50%", background:"#F5C8E8", opacity:0.35 }} />
+              <div style={{ position:"absolute", bottom:40, right:40, width:160, height:160, borderRadius:"50%", background:"#C8E8F5", opacity:0.4 }} />
+            </div>
+          )}
+
+          {/* WHEEL TAB */}
+          {tab === "wheel" && (
+            <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", padding:"28px 16px 48px", gap:20 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, justifyContent:"center" }}>
+                <Sparkle /><span style={{ fontSize:11, fontWeight:700, letterSpacing:"0.2em", color:T.textMuted }}>SPIN THE WHEEL</span><Sparkle />
+              </div>
+
+              <div style={{ position:"relative", filter:`drop-shadow(0 8px 24px ${dark ? "rgba(101,52,255,0.4)" : "rgba(123,110,208,0.25)"})`, transition:"filter 0.3s" }}>
+                {names.length >= 2 ? (
+                  <>
+                    <div style={{ position:"absolute", top:"50%", right:-14, transform:"translateY(-50%)", width:0, height:0, borderTop:"12px solid transparent", borderBottom:"12px solid transparent", borderRight:`26px solid ${T.pointerColor}`, filter:`drop-shadow(0 0 6px ${T.pointerColor}88)`, zIndex:10 }} />
+                    <WheelCanvas names={names} colors={T.sliceColors} rotation={rotation} dark={dark} />
+                  </>
+                ) : (
+                  <div style={{ width:360, height:360, borderRadius:"50%", background:T.surface, border:`2px dashed ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center", color:T.textLight, fontSize:13, textAlign:"center", padding:48, fontWeight:700, letterSpacing:"0.05em" }}>
+                    ADD AT LEAST<br/>2 NAMES TO SPIN
+                  </div>
+                )}
+              </div>
+
+              <button onClick={spin} disabled={spinning || names.length < 2} style={{ padding:"14px 52px", borderRadius:50, border:"none", cursor:(spinning||names.length<2)?"not-allowed":"pointer", fontSize:14, fontWeight:800, letterSpacing:"0.12em", fontFamily:"inherit", background:(spinning||names.length<2)?T.btnSecondary:T.btnPrimary, color:(spinning||names.length<2)?T.btnSecondaryText:T.btnPrimaryText, boxShadow:(spinning||names.length<2)?"none":T.btnPrimaryGlow, transition:"all 0.3s", transform:spinning?"scale(0.97)":"scale(1)" }}>
+                {spinning ? "SPINNING..." : "✦ SPIN THE WHEEL ✦"}
+              </button>
+
+              {showWinner && winner && (
+                <div style={{ textAlign:"center", animation:"popIn 0.5s cubic-bezier(0.34,1.56,0.64,1)" }}>
+                  <div style={{ fontSize:10, letterSpacing:"0.3em", color:T.textMuted, marginBottom:10, fontWeight:700 }}>✦ WINNER ✦</div>
+                  <div style={{ fontSize:"clamp(20px,5vw,28px)", fontWeight:900, padding:"14px 36px", borderRadius:50, border:`2px solid ${dark?"rgba(200,80,192,0.4)":"rgba(123,110,208,0.35)"}`, boxShadow:dark?"0 0 40px rgba(101,52,255,0.2)":"0 4px 20px rgba(123,110,208,0.2)", background:T.winnerGradient, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", letterSpacing:"0.04em" }}>
+                    🎉 {winner.toUpperCase()} 🎉
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display:"flex", gap:8, width:"100%", maxWidth:360 }}>
+                <input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key==="Enter" && addName()} placeholder="Add a name..." style={{ flex:1, padding:"11px 18px", borderRadius:50, background:T.inputBg, border:`1px solid ${T.border}`, color:T.text, fontFamily:"inherit", fontSize:13, outline:"none", boxShadow:dark?"none":"0 2px 8px rgba(155,142,224,0.1)" }} />
+                <button onClick={addName} style={{ padding:"11px 20px", borderRadius:50, border:"none", background:T.btnPrimary, color:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:16, fontWeight:800, boxShadow:T.btnPrimaryGlow }}>+</button>
+              </div>
+
+              {names.length > 0 && (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:7, justifyContent:"center", maxWidth:420 }}>
+                  {names.map((name, i) => {
+                    const c = POAP_SLICE_COLORS[i % POAP_SLICE_COLORS.length];
+                    return (
+                      <div key={name} style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 12px", borderRadius:20, background:T.tagBg(c), border:`1px solid ${T.tagBorder(c)}`, fontSize:12, fontWeight:600, boxShadow:dark?"none":"0 1px 4px rgba(155,142,224,0.15)" }}>
+                        <span style={{ color:T.tagText(c) }}>{name}</span>
+                        <button onClick={() => removeName(name)} style={{ background:"none", border:"none", cursor:"pointer", color:dark?"#444":"#BDB5E8", fontSize:15, padding:0, lineHeight:1 }}>×</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {names.length >= 20 && <div style={{ fontSize:11, color:T.textMuted, letterSpacing:"0.1em", fontWeight:700 }}>✦ MAX 20 NAMES REACHED ✦</div>}
+            </div>
+          )}
+
+          {/* HISTORY TAB */}
+          {tab === "history" && (
+            <div style={{ position:"relative", zIndex:1, padding:"28px 20px", maxWidth:500, margin:"0 auto", width:"100%" }}>
+              <div style={{ fontSize:11, letterSpacing:"0.25em", color:T.textMuted, marginBottom:24, fontWeight:700 }}>✦ DRAW HISTORY</div>
+              {history.length === 0 ? (
+                <div style={{ color:T.textLight, fontSize:14, textAlign:"center", marginTop:80, letterSpacing:"0.05em", fontWeight:600 }}>
+                  NO DRAWS YET<br/><span style={{ fontSize:11, marginTop:8, display:"block", fontWeight:400 }}>Spin the wheel to get started</span>
+                </div>
+              ) : (
+                history.map((h, i) => (
+                  <div key={i} style={{ background:T.historyCardBg, border:`1px solid ${T.historyCardBorder}`, borderRadius:16, padding:"16px 20px", marginBottom:10, boxShadow:dark?"none":"0 2px 12px rgba(155,142,224,0.1)" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                      <div>
+                        <div style={{ fontSize:16, fontWeight:900, letterSpacing:"0.04em", background:T.winnerGradient, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>🎉 {h.winner.toUpperCase()}</div>
+                        <div style={{ fontSize:11, color:T.textLight, marginTop:6, lineHeight:1.8 }}>{h.participants.join(" · ")}</div>
+                      </div>
+                      <div style={{ fontSize:10, color:T.textLight, letterSpacing:"0.05em", flexShrink:0, marginLeft:12 }}>{h.date}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
