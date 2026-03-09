@@ -1,0 +1,8 @@
+[09/03/2026 15:56]
+Participantes: usuario 1, usuario 2, usuario 3, 4, 5, siete
+Ganador: usuario 1
+----------------------------------------
+[09/03/2026 16:03]
+Participantes: uno, dos tres, tres, cuatro, cinco, seis
+Ganador: uno
+----------------------------------------

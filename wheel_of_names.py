@@ -7,7 +7,7 @@ from datetime import datetime
 # --- Configuration ---
 MAX_NAMES = 20
 ANIMATION_DURATION_SECONDS = 5
-HISTORY_FILE = "historial_sorteos.txt"
+HISTORY_FILE = "draw_history.txt"
 # ---------------------
 
 def clear_screen():
@@ -17,14 +17,14 @@ def clear_screen():
 def get_names():
     names = []
     print("--- 🎡 Wheel of Names ---")
-    print(f"Ingresá hasta {MAX_NAMES} nombres. Enter en blanco cuando termines.\n")
+    print(f"Enter up to {MAX_NAMES} names. Press Enter on an empty line when you're done.\n")
 
     while len(names) < MAX_NAMES:
-        name = input(f"Nombre #{len(names) + 1}: ").strip()
+        name = input(f"Name #{len(names) + 1}: ").strip()
 
         if not name:
             if len(names) < 2:
-                print("Necesitás al menos 2 nombres.\n")
+                print("Please enter at least 2 names.\n")
                 continue
             else:
                 break
@@ -32,13 +32,13 @@ def get_names():
         names.append(name)
 
     if len(names) == MAX_NAMES:
-        print(f"\nMáximo de {MAX_NAMES} nombres alcanzado.")
+        print(f"\nMaximum of {MAX_NAMES} names reached.")
 
     return names
 
 def display_names(names, highlighted=None):
-    """Muestra todos los nombres. Si se pasa uno como highlighted, lo resalta."""
-    print("Participantes:\n")
+    """Shows all names. Highlights the currently selected one."""
+    print("Participants:\n")
     for name in names:
         if name == highlighted:
             print(f"  ▶  {name.upper()}  ◀")
@@ -48,7 +48,7 @@ def display_names(names, highlighted=None):
 
 def run_animation(names):
     clear_screen()
-    print("¡A girar la rueda!\n")
+    print("Let's spin the wheel!\n")
     time.sleep(1)
 
     winner = random.choice(names)
@@ -59,15 +59,15 @@ def run_animation(names):
 
     while current_time - start_time < ANIMATION_DURATION_SECONDS:
         clear_screen()
-        print("🎡 Girando...\n")
+        print("🎡 Spinning...\n")
 
-        # Mostrar todos los nombres, resaltando uno random
+        # Show all names, highlight a random one
         highlighted = random.choice(names)
         display_names(names, highlighted)
 
         time.sleep(spin_delay)
 
-        # Frenar en los últimos 2.5 segundos
+        # Slow down in the last 2.5 seconds
         if current_time - start_time > (ANIMATION_DURATION_SECONDS - 2.5):
             spin_delay += 0.03
 
@@ -77,69 +77,70 @@ def run_animation(names):
 
 def display_winner(name, all_names):
     clear_screen()
-    print("Y el ganador es...\n")
+    print("And the winner is...\n")
     time.sleep(1.5)
 
-    winner_text = f"🎉  {name.upper()}  🎉"
-    border = "═" * (len(winner_text) + 4)
+    # Fixed width to avoid emoji alignment issues in terminal
+    BOX_WIDTH = 30
+    name_centered = name.upper().center(BOX_WIDTH)
 
-    print(f"\n  ╔{border}╗")
-    print(f"  ║  {winner_text}  ║")
-    print(f"  ╚{border}╝")
-    print("\n  ¡Felicitaciones!\n")
+    print(f"\n  ╔{'═' * (BOX_WIDTH + 2)}╗")
+    print(f"  ║ {name_centered} ║")
+    print(f"  ╚{'═' * (BOX_WIDTH + 2)}╝")
+    print("\n  🎉 Congratulations! 🎉\n")
 
     save_to_history(name, all_names)
 
 def save_to_history(winner, all_names):
-    """Guarda el resultado en el archivo de historial."""
-    timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+    """Saves the draw result to the history file."""
+    timestamp = datetime.now().strftime("%m/%d/%Y %H:%M")
     participants = ", ".join(all_names)
 
     with open(HISTORY_FILE, "a", encoding="utf-8") as f:
         f.write(f"[{timestamp}]\n")
-        f.write(f"Participantes: {participants}\n")
-        f.write(f"Ganador: {winner}\n")
+        f.write(f"Participants: {participants}\n")
+        f.write(f"Winner: {winner}\n")
         f.write("-" * 40 + "\n")
 
-    print(f"  (Resultado guardado en '{HISTORY_FILE}')\n")
+    print(f"  (Result saved to '{HISTORY_FILE}')\n")
 
 def show_history():
-    """Muestra el historial de sorteos anteriores."""
+    """Displays the history of previous draws."""
     if not os.path.exists(HISTORY_FILE):
-        print("Todavía no hay historial de sorteos.\n")
+        print("No draw history yet.\n")
         return
 
-    print("\n--- 📋 Historial de sorteos ---\n")
+    print("\n--- 📋 Draw History ---\n")
     with open(HISTORY_FILE, "r", encoding="utf-8") as f:
         print(f.read())
 
 def main():
     clear_screen()
     print("--- 🎡 Wheel of Names ---\n")
-    print("1. Hacer un sorteo")
-    print("2. Ver historial")
-    print("3. Salir\n")
+    print("1. Run a draw")
+    print("2. View history")
+    print("3. Exit\n")
 
-    opcion = input("Elegí una opción: ").strip()
+    option = input("Choose an option: ").strip()
 
-    if opcion == "1":
+    if option == "1":
         names_list = get_names()
         if names_list:
             winner = run_animation(names_list)
             display_winner(winner, names_list)
-            input("Presioná Enter para volver al menú...")
+            input("Press Enter to go back to the menu...")
             main()
 
-    elif opcion == "2":
+    elif option == "2":
         show_history()
-        input("Presioná Enter para volver al menú...")
+        input("Press Enter to go back to the menu...")
         main()
 
-    elif opcion == "3":
-        print("¡Hasta la próxima!\n")
+    elif option == "3":
+        print("See you next time!\n")
 
     else:
-        print("Opción inválida.\n")
+        print("Invalid option.\n")
         main()
 
 if __name__ == "__main__":
